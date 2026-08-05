@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ทศกัณฐ์ — โมเดล 3D และ AR</title>
+
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js" onerror="this.dataset.failed=1; document.getElementById('mv-fallback').src='https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';"></script>
+<script type="module" id="mv-fallback"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0b0a0c;
+    --surface:#16131a;
+    --red:#7a1620;
+    --red-bright:#9c1f2c;
+    --gold:#c9a15a;
+    --gold-soft:#e4c98a;
+    --ink:#f2ead8;
+    --ink-dim:#9c9289;
+    --line: rgba(201,161,90,0.22);
+    /* สีเขียวมรกต — สื่อถึงกายสีเขียวของทศกัณฐ์ ใช้เป็นสีรองแซมกับโทนหลัก */
+    --emerald:#3f6b52;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Noto Sans Thai', 'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(122,22,32,0.35), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 100%, rgba(63,107,82,0.14), transparent 60%),
+      var(--bg);
+  }
+
+  header.top{
+    padding:28px 20px 14px;
+    text-align:center;
+    position:relative;
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--gold);
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Noto Serif Thai', serif;
+    font-weight:700;
+    font-size:clamp(30px, 7vw, 46px);
+    margin:0 0 8px;
+    letter-spacing:0.01em;
+  }
+  h1 span{ color:var(--gold-soft); font-weight:500; }
+  .subtitle{
+    color:var(--ink-dim);
+    font-size:14px;
+    max-width:520px;
+    margin:0 auto;
+    line-height:1.7;
+  }
+
+  .stage-wrap{
+    position:relative;
+    max-width:920px;
+    margin:22px auto 0;
+    padding:0 16px;
+  }
+  .stage{
+    position:relative;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:
+      radial-gradient(circle at 50% 42%, rgba(63,107,82,0.16), transparent 55%),
+      linear-gradient(180deg, var(--surface) 0%, #0e0c10 100%);
+    box-shadow: 0 30px 70px -30px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.02);
+  }
+  .stage::before{
+    content:"";
+    position:absolute; inset:0;
+    pointer-events:none;
+    box-shadow: inset 0 0 120px 20px rgba(0,0,0,0.55);
+    z-index:2;
+  }
+  .ring{
+    position:absolute;
+    left:50%; top:44%;
+    width:64%;
+    aspect-ratio:1/1;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    border:1px solid rgba(201,161,90,0.25);
+    pointer-events:none;
+    z-index:1;
+  }
+  .ring::after{
+    content:"";
+    position:absolute; inset:-14px;
+    border-radius:50%;
+    border:1px dashed rgba(201,161,90,0.14);
+    animation:spin 40s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+  @media (prefers-reduced-motion: reduce){ .ring::after{ animation:none; } }
+
+  model-viewer{
+    width:100%;
+    height:min(72vh, 620px);
+    min-height:360px;
+    display:block;
+    position:relative;
+    z-index:1;
+    --poster-color: transparent;
+    --progress-bar-color: var(--gold);
+    --progress-bar-height: 3px;
+  }
+
+  .hint{
+    position:absolute;
+    left:0; right:0; top:14px;
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-dim);
+    letter-spacing:0.02em;
+    z-index:3;
+    pointer-events:none;
+    display:flex;
+    gap:16px;
+    justify-content:center;
+    flex-wrap:wrap;
+    padding:0 12px;
+  }
+  .hint span{
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(11,10,12,0.55);
+    backdrop-filter:blur(3px);
+    padding:5px 10px;
+    border-radius:999px;
+    border:1px solid rgba(201,161,90,0.18);
+  }
+
+  /* ปุ่ม AR ต้องเป็นลูกโดยตรงของ <model-viewer> พร้อม slot="ar-button" เท่านั้น */
+  #ar-btn{
+    position:absolute;
+    left:50%; bottom:16px;
+    transform:translateX(-50%);
+    z-index:5;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    background:linear-gradient(180deg, var(--red-bright), var(--red));
+    color:var(--ink);
+    border:1px solid rgba(228,201,138,0.4);
+    padding:14px 26px;
+    min-height:50px;
+    border-radius:999px;
+    font-family:'Noto Sans Thai';
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    box-shadow:0 12px 28px -8px rgba(122,22,32,0.75);
+    animation:pulse-ar 2.4s ease-in-out 3;
+  }
+  #ar-btn[disabled]{
+    background:#3a3540;
+    color:var(--ink-dim);
+    box-shadow:none;
+    cursor:not-allowed;
+    animation:none;
+    border-color:var(--line);
+  }
+  @keyframes pulse-ar{
+    0%,100%{ box-shadow:0 12px 28px -8px rgba(122,22,32,0.75); }
+    50%{ box-shadow:0 12px 34px -4px rgba(201,161,90,0.55); }
+  }
+  @media (prefers-reduced-motion: reduce){ #ar-btn{ animation:none; } }
+  #ar-btn:focus-visible, .icon-btn:focus-visible{
+    outline:2px solid var(--gold-soft);
+    outline-offset:2px;
+  }
+  #ar-btn svg{ width:20px; height:20px; flex:0 0 auto; }
+
+  .icon-btn{
+    position:absolute;
+    left:16px; bottom:16px;
+    z-index:5;
+    width:46px; height:46px;
+    border-radius:50%;
+    background:rgba(22,19,26,0.75);
+    border:1px solid var(--line);
+    color:var(--gold-soft);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    backdrop-filter:blur(4px);
+  }
+  .icon-btn svg{ width:19px; height:19px; }
+
+  .ar-toast{
+    position:absolute;
+    left:50%; top:16px;
+    transform:translateX(-50%) translateY(-140%);
+    z-index:6;
+    background:rgba(11,10,12,0.9);
+    border:1px solid var(--gold);
+    color:var(--gold-soft);
+    font-size:13px;
+    font-weight:600;
+    padding:9px 18px;
+    border-radius:999px;
+    max-width:88%;
+    text-align:center;
+    transition:transform .3s ease;
+    pointer-events:none;
+  }
+  .ar-toast.show{ transform:translateX(-50%) translateY(0); }
+
+  .panel{
+    max-width:920px;
+    margin:22px auto 0;
+    padding:0 16px 40px;
+  }
+  .info-title{
+    font-family:'Noto Serif Thai';
+    font-size:23px;
+    font-weight:700;
+    margin:0 0 10px;
+    color:var(--gold-soft);
+  }
+  .info-text{
+    color:#d9d2c4;
+    font-size:15px;
+    line-height:1.9;
+    margin:0 0 16px;
+  }
+  .meta-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+    gap:14px;
+    margin-top:20px;
+  }
+  .meta-item{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    background:rgba(255,255,255,0.02);
+  }
+  .meta-item .k{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--gold);
+    margin-bottom:6px;
+  }
+  .meta-item .v{ font-size:14px; color:var(--ink); line-height:1.5; }
+
+  footer{
+    text-align:center;
+    padding:20px 16px 34px;
+    color:var(--ink-dim);
+    font-size:11px;
+    letter-spacing:0.03em;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="eyebrow">โมเดลสามมิติ · ความเป็นจริงเสริม (AR)</div>
+  <h1>ทศกัณฐ์ <span>ราชายักษ์แห่งลงกา</span></h1>
+  <p class="subtitle">ลากนิ้วบนโมเดลเพื่อหมุนดูรอบทิศ 360° บีบสองนิ้วเพื่อซูมเข้า-ออก
+    และแตะปุ่มสีแดงเพื่อนำทศกัณฐ์มาวางไว้ในพื้นที่จริงรอบตัวคุณ</p>
+</header>
+
+<div class="stage-wrap">
+  <div class="stage">
+    <div class="ring"></div>
+
+    <model-viewer
+      id="viewer"
+      src="Khon2.glb"
+      alt="โมเดลสามมิติทศกัณฐ์"
+      camera-controls
+      touch-action="pan-y"
+      auto-rotate
+      auto-rotate-delay="2500"
+      rotation-per-second="14deg"
+      interaction-prompt="none"
+      shadow-intensity="0.9"
+      shadow-softness="0.8"
+      exposure="1.05"
+      environment-image="neutral"
+      camera-orbit="0deg 75deg 105%"
+      min-camera-orbit="auto auto 55%"
+      max-camera-orbit="auto auto 220%"
+      ar
+      ar-modes="scene-viewer webxr quick-look"
+      ar-scale="auto"
+      ar-placement="floor"
+      loading="eager"
+      reveal="auto">
+
+      <div class="poster-loading" slot="poster" id="poster-loading" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:#9c9289;font-family:'Noto Sans Thai';font-size:13px;padding:30px;">
+        <span id="poster-text">กำลังโหลดโมเดล…</span>
+      </div>
+
+      <div class="ar-toast" id="ar-toast"></div>
+
+      <div class="hint">
+        <span>✦ ลากเพื่อหมุน 360°</span>
+        <span>✦ บีบนิ้วเพื่อซูม</span>
+      </div>
+
+      <button id="ar-btn" slot="ar-button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 12v10"/></svg>
+        <span id="ar-btn-label">ดูทศกัณฐ์แบบ AR</span>
+      </button>
+    </model-viewer>
+
+    <button class="icon-btn" id="reset-btn" title="รีเซ็ตมุมมอง" aria-label="รีเซ็ตมุมมอง">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.64 6.36"/><path d="M3 21v-5h5"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2 class="info-title">ทศกัณฐ์ คือใคร</h2>
+  <p class="info-text">
+    ทศกัณฐ์เป็นยักษ์ราชาแห่งกรุงลงกา และเป็นตัวปฏิปักษ์คนสำคัญในเรื่อง <strong>รามเกียรติ์</strong>
+    มีลักษณะเด่นคือกายสีเขียว มีสิบหน้าสิบเศียรและยี่สิบกร จึงได้ชื่อว่า "ทศกัณฐ์" (ผู้มีสิบคอ)
+    หรือเรียกอีกชื่อว่า ทศพักตร์ ทศเศียร ท้าวยี่สิบกร ในภาษาสันสกฤตเทียบได้กับราวณะแห่งเรื่องรามายณะ
+  </p>
+  <p class="info-text">
+    ตามตำนาน ทศกัณฐ์แต่เดิมคือยักษ์ผู้รับใช้ชื่อ "นนทก" มีหน้าที่ล้างเท้าเทวดาที่ผ่านไปมา
+    แต่ถูกเหล่าเทวดาลูบหัวเล่นจนเกิดความแค้น จึงขอนิ้วเพชรจากพระอิศวรไปสังหารเทวดาจำนวนมาก
+    พระนารายณ์จึงต้องปราบนนทกด้วยกลอุบาย ก่อนสิ้นใจนนทกได้สาปแช่งขอเกิดใหม่เพื่อล้างแค้น
+    จึงกลับชาติมาเกิดเป็นทศกัณฐ์ โอรสองค์โตของท้าวลัสเตียนกับนางรัชฎา แห่งกรุงลงกา
+  </p>
+  <p class="info-text">
+    ทศกัณฐ์มีฤทธิ์มาก เหาะเหินเดินอากาศได้ และแฝงกายให้อยู่ยงคงกระพันด้วยการถอดดวงใจออก
+    ไปฝากไว้กับพระฤๅษีผู้เป็นอาจารย์ จึงไม่มีผู้ใดสังหารได้ง่าย ด้วยนิสัยเจ้าชู้และหลงใหลในความงาม
+    ทศกัณฐ์ได้ลักพาตัวนางสีดา มเหสีของพระราม มาไว้ที่กรุงลงกา จนกลายเป็นชนวนสงครามครั้งใหญ่
+    ระหว่างทัพพระรามกับกรุงลงกา และสุดท้ายทศกัณฐ์ก็สิ้นพระชนม์ด้วยศรของพระราม
+  </p>
+  <div class="meta-grid">
+    <div class="meta-item"><div class="k">ที่มา</div><div class="v">วรรณคดีเรื่องรามเกียรติ์</div></div>
+    <div class="meta-item"><div class="k">บทบาท</div><div class="v">ราชายักษ์แห่งกรุงลงกา / คู่ปรับของพระราม</div></div>
+    <div class="meta-item"><div class="k">บิดา-มารดา</div><div class="v">ท้าวลัสเตียน และนางรัชฎา</div></div>
+    <div class="meta-item"><div class="k">มเหสี</div><div class="v">นางมณโฑ</div></div>
+    <div class="meta-item"><div class="k">สีกาย</div><div class="v">เขียว</div></div>
+    <div class="meta-item"><div class="k">ลักษณะพิเศษ</div><div class="v">สิบหน้า ยี่สิบกร ถอดดวงใจได้</div></div>
+  </div>
+</div>
+
+<footer>ทศกัณฐ์ · โมเดล 3D เชิงโต้ตอบ และ AR</footer>
+
+<script>
+  const viewer = document.getElementById('viewer');
+  const arBtn = document.getElementById('ar-btn');
+  const arBtnLabel = document.getElementById('ar-btn-label');
+  const arToast = document.getElementById('ar-toast');
+
+  document.getElementById('reset-btn').addEventListener('click', ()=>{
+    viewer.cameraOrbit = '0deg 75deg 105%';
+    viewer.cameraTarget = 'auto auto auto';
+    viewer.fieldOfView = 'auto';
+  });
+
+  viewer.addEventListener('camera-change', (e)=>{
+    if(e.detail.source === 'user-interaction'){
+      viewer.removeAttribute('auto-rotate');
+    }
+  });
+
+  function showArToast(text, autoHideMs){
+    arToast.textContent = text;
+    arToast.classList.add('show');
+    if(autoHideMs){
+      clearTimeout(showArToast._t);
+      showArToast._t = setTimeout(()=> arToast.classList.remove('show'), autoHideMs);
+    }
+  }
+
+  viewer.addEventListener('ar-status', (event)=>{
+    switch(event.detail.status){
+      case 'session-started':
+        showArToast('กำลังค้นหาพื้นที่ว่าง — ค่อย ๆ ขยับโทรศัพท์ไปมา');
+        break;
+      case 'object-placed':
+        showArToast('วางทศกัณฐ์เรียบร้อย ✓ ลากนิ้วเพื่อหมุน บีบนิ้วเพื่อย่อ-ขยาย', 4000);
+        break;
+      case 'failed':
+        showArToast('เปิด AR ไม่สำเร็จ ลองใหม่อีกครั้ง หรือตรวจสอบสิทธิ์กล้อง', 4000);
+        break;
+      case 'not-presenting':
+        arToast.classList.remove('show');
+        break;
+    }
+  });
+
+  function refreshArAvailability(){
+    if (viewer.canActivateAR) {
+      arBtn.disabled = false;
+      arBtnLabel.textContent = 'ดูทศกัณฐ์แบบ AR';
+    } else {
+      arBtn.disabled = true;
+      arBtnLabel.textContent = 'อุปกรณ์นี้ไม่รองรับ AR';
+    }
+  }
+  customElements.whenDefined('model-viewer').then(()=>{
+    viewer.addEventListener('load', refreshArAvailability);
+    setTimeout(refreshArAvailability, 1500);
+    setTimeout(refreshArAvailability, 4000);
+  });
+
+  arBtn.addEventListener('click', ()=>{
+    if (!viewer.canActivateAR) {
+      showArToast('อุปกรณ์หรือเบราว์เซอร์นี้ยังไม่รองรับ AR — ลองเปิดด้วย Chrome (Android) หรือ Safari (iOS) เวอร์ชันล่าสุด', 5000);
+    }
+  });
+
+  const posterText = document.getElementById('poster-text');
+
+  viewer.addEventListener('error', (event)=>{
+    console.error('model-viewer error:', event.detail);
+    posterText.innerHTML =
+      'โหลดโมเดล 3D ไม่สำเร็จ<br>ตรวจสอบว่าไฟล์ <code>Khon2.glb</code> อยู่ในโฟลเดอร์เดียวกับหน้านี้ ' +
+      'บนโฮสต์ และหน้านี้เปิดผ่าน https หรือไม่';
+  });
+
+  setTimeout(()=>{
+    if (typeof customElements.get('model-viewer') === 'undefined') {
+      posterText.innerHTML =
+        'โหลดไลบรารีแสดงผล 3D ไม่สำเร็จ<br>เครือข่ายอาจปิดกั้น ajax.googleapis.com — ' +
+        'ลองเปลี่ยน Wi-Fi หรือปิดตัวบล็อกโฆษณา/VPN แล้วโหลดหน้านี้ใหม่';
+      return;
+    }
+    if (!viewer.loaded) {
+      posterText.innerHTML =
+        'โมเดลกำลังโหลดนานกว่าปกติ<br>ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือลองเปิด ' +
+        '<a href="Khon2.glb" style="color:#e4c98a" target="_blank">ไฟล์ Khon2.glb</a> โดยตรงเพื่อตรวจสอบเส้นทางไฟล์';
+    }
+  }, 12000);
+</script>
+
+</body>
+</html>
