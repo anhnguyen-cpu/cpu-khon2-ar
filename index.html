@@ -53,7 +53,7 @@ a{color:var(--gold)}
 
 /* ---------- hero stage ---------- */
 .stage{
-  position:relative; height:100svh; min-height:560px; max-height:1100px;
+  position:relative; height:92svh; min-height:560px; max-height:1100px;
   background:
     radial-gradient(ellipse 60% 55% at 50% 52%, var(--glow), transparent 70%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
@@ -152,16 +152,20 @@ model-viewer{
 }
 .hotspot.active .hs-label, .hotspot:hover .hs-label, .hotspot:focus-visible .hs-label{opacity:1}
 
-/* QR popover for desktops without AR */
-.qr{
-  position:absolute; z-index:8; right:20px; bottom:calc(84px + env(safe-area-inset-bottom));
-  width:236px; padding:16px; border-radius:16px; text-align:center;
-  background:var(--surface); border:1px solid var(--line); box-shadow:0 20px 50px -20px #000;
-  font-size:14px; line-height:1.5; color:var(--dim);
+/* scroll-to-info button */
+.more{
+  position:absolute; z-index:6; left:50%; transform:translateX(-50%);
+  bottom:calc(22px + env(safe-area-inset-bottom));
+  display:inline-flex; flex-direction:column; align-items:center; gap:2px;
+  color:var(--ink); text-decoration:none; font-size:14px; font-weight:500;
+  padding:8px 18px 6px; border-radius:16px;
+  background:color-mix(in srgb, var(--bg) 55%, transparent); border:1px solid var(--line); backdrop-filter:blur(6px);
 }
-.qr[hidden]{display:none}
-.qr #qrcode{background:#fff; padding:10px; border-radius:10px; width:max-content; margin:0 auto 10px}
-.qr strong{color:var(--ink); display:block; margin-bottom:4px}
+.more svg{width:22px; height:22px; color:var(--gold); animation:nudge 2.2s ease-in-out 3 1.5s}
+.more:hover{border-color:var(--gold)}
+@keyframes nudge{0%,100%{transform:translateY(0)} 50%{transform:translateY(4px)}}
+.zoom{display:inline-flex; gap:10px}
+main{scroll-margin-top:0}
 
 .toast{
   position:absolute; z-index:9; left:50%; top:calc(70px + env(safe-area-inset-top));
@@ -217,13 +221,18 @@ footer p{margin:0; max-width:60ch}
   .caption{left:16px; right:16px; max-width:none; bottom:calc(84px + env(safe-area-inset-bottom))}
   .controls{left:16px; right:16px; justify-content:space-between}
   .btn-ar{flex:1; justify-content:center}
-  .qr{right:16px; left:16px; width:auto}
+  .zoom{display:none}
+  .more{left:auto; right:16px; transform:none; bottom:calc(84px + env(safe-area-inset-bottom)); flex-direction:row; padding:8px 12px; font-size:13px}
+  .more span{display:none}
+  .more::before{content:'ข้อมูล'}
   main{padding-top:52px}
   .story{grid-template-columns:1fr; gap:28px}
   dl div{grid-template-columns:7.5em 1fr}
   .bar{padding-left:16px; padding-right:16px}
 }
 @media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .more svg{animation:none}
   .bigname{animation:none; opacity:1}
   *{transition:none !important}
 }
@@ -259,7 +268,7 @@ footer p{margin:0; max-width:60ch}
   </model-viewer>
 
   <div class="status" id="status" hidden></div>
-  <div class="hint" id="hint">ลากเพื่อหมุน &nbsp;/&nbsp; บีบหรือเลื่อนเพื่อซูม</div>
+  <div class="hint" id="hint">ลากเพื่อหมุน &nbsp;/&nbsp; กด Ctrl แล้วเลื่อนเมาส์เพื่อซูม</div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <div class="caption">
@@ -267,24 +276,27 @@ footer p{margin:0; max-width:60ch}
     <p>ราชายักษ์แห่งกรุงลงกา</p>
   </div>
 
-  <div class="qr" id="qr" hidden>
-    <div id="qrcode"></div>
-    <strong>สแกนเพื่อดูแบบ AR</strong>
-    เปิดหน้านี้บนมือถือ Android (Chrome) หรือ iPhone (Safari) แล้วแตะปุ่ม “วางในห้อง”
-  </div>
+  <a class="more" id="more" href="#info">
+    <span>ดูข้อมูลทศกัณฐ์</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+  </a>
 
   <div class="controls">
     <button class="btn btn-icon" id="reset" aria-label="กลับมุมมองเริ่มต้น" title="กลับมุมมองเริ่มต้น">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
     </button>
+    <span class="zoom">
+      <button class="btn btn-icon" id="zoom-in" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="btn btn-icon" id="zoom-out" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    </span>
     <button class="btn btn-ar" id="ar-open">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg>
-      <span id="ar-label">วางทศกัณฐ์ในห้อง</span>
+      <span id="ar-label">ดูทศกัณฐ์แบบ AR</span>
     </button>
   </div>
 </section>
 
-<main>
+<main id="info">
   <h2>ชี้ดูส่วนต่าง ๆ ของหัวโขน</h2>
   <p class="lede">แตะชื่อส่วนด้านล่าง หรือแตะเครื่องหมายบนโมเดล กล้องจะเลื่อนไปซูมให้ดูใกล้ ๆ</p>
   <ul class="parts">
@@ -319,7 +331,6 @@ footer p{margin:0; max-width:60ch}
   <a href="https://anhnguyen-cpu.github.io/cpu-khon1-ar/">ดูหัวโขนหนุมาน</a>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script>
 (() => {
   const viewer = document.getElementById('viewer');
@@ -328,7 +339,6 @@ footer p{margin:0; max-width:60ch}
   const toast = document.getElementById('toast');
   const hint = document.getElementById('hint');
   const status = document.getElementById('status');
-  const qr = document.getElementById('qr');
   const START = { orbit: viewer.getAttribute('camera-orbit'), target: 'auto auto auto', fov: '28deg' };
   const NAME = 'ทศกัณฐ์';
 
@@ -381,22 +391,50 @@ footer p{margin:0; max-width:60ch}
     focusPart(p);
   }));
 
-  // ---- AR: real AR on phones, QR code on desktop ----
-  let qrMade = false;
-  function updateAr() {
-    if (viewer.canActivateAR) { arLabel.textContent = `วาง${NAME}ในห้อง`; arOpen.dataset.mode = 'ar'; }
-    else { arLabel.textContent = 'ดูแบบ AR บนมือถือ'; arOpen.dataset.mode = 'qr'; }
+  // ---- mouse wheel scrolls the page; Ctrl/⌘ + wheel (or trackpad pinch) zooms the model ----
+  const stage = document.querySelector('.stage');
+  stage.addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.metaKey) e.stopPropagation();
+  }, { capture: true, passive: true });
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  if (coarse) hint.innerHTML = 'ลากเพื่อหมุน &nbsp;/&nbsp; บีบสองนิ้วเพื่อซูม';
+  function zoomBy(step) {
+    if (typeof viewer.zoom === 'function') { viewer.zoom(step); return; }
+    const o = viewer.getCameraOrbit();
+    viewer.cameraOrbit = `${o.theta}rad ${o.phi}rad ${o.radius * (step > 0 ? 0.8 : 1.25)}m`;
+  }
+  document.getElementById('zoom-in').addEventListener('click', () => zoomBy(3));
+  document.getElementById('zoom-out').addEventListener('click', () => zoomBy(-3));
+
+  // ---- "see info" button: scroll to the content ----
+  document.getElementById('more').addEventListener('click', e => {
+    e.preventDefault();
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: document.getElementById('info').getBoundingClientRect().top + scrollY - 8, behavior: reduce ? 'auto' : 'smooth' });
+  });
+
+  // ---- AR: one tap opens the camera on phones ----
+  const UA = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(UA);
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Zalo|TikTok|MicroMessenger|Messenger/i.test(UA);
+  const glbUrl = new URL(viewer.getAttribute('src'), location.href).href;
+
+  function sceneViewerIntent() {
+    const params = `file=${encodeURIComponent(glbUrl)}&mode=ar_preferred&title=${encodeURIComponent(NAME)}`;
+    return `intent://arvr.google.com/scene-viewer/1.2?${params}#Intent;scheme=https;` +
+      `package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;` +
+      `S.browser_fallback_url=${encodeURIComponent(location.href)};end;`;
   }
   arOpen.addEventListener('click', () => {
-    if (arOpen.dataset.mode === 'ar') { viewer.activateAR(); return; }
-    qr.hidden = !qr.hidden;
-    if (!qr.hidden && !qrMade && window.QRCode) {
-      new QRCode(document.getElementById('qrcode'), { text: location.href.split('#')[0], width: 160, height: 160 });
-      qrMade = true;
+    if (viewer.canActivateAR) { viewer.activateAR(); return; }
+    if (isAndroid) { location.href = sceneViewerIntent(); return; }
+    if (isIOS) {
+      say(inApp ? 'แอปนี้เปิด AR ไม่ได้ แตะ ⋯ แล้วเลือก “เปิดใน Safari”' : 'กำลังเตรียม AR…', 5000);
+      if (!inApp) customElements.whenDefined('model-viewer').then(() => viewer.activateAR());
+      return;
     }
-  });
-  document.addEventListener('click', e => {
-    if (!qr.hidden && !qr.contains(e.target) && !arOpen.contains(e.target)) qr.hidden = true;
+    say('AR ต้องใช้กล้องของมือถือ เปิดหน้านี้บน Android หรือ iPhone แล้วแตะปุ่มนี้', 5000);
   });
 
   viewer.addEventListener('ar-status', e => {
@@ -407,11 +445,7 @@ footer p{margin:0; max-width:60ch}
     else if (s === 'not-presenting') toast.classList.remove('show');
   });
 
-  customElements.whenDefined('model-viewer').then(() => {
-    updateAr();
-    viewer.addEventListener('load', () => { updateAr(); status.hidden = true; });
-    setTimeout(updateAr, 1500);
-  });
+  viewer.addEventListener('load', () => { status.hidden = true; });
 
   // ---- loading problems: say what happened and what to do ----
   viewer.addEventListener('error', () => {
