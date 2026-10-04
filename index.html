@@ -2,459 +2,429 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ทศกัณฐ์ — โมเดล 3D และ AR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ทศกัณฐ์ — หัวโขน 3 มิติ และ AR</title>
+<meta name="description" content="หมุนดูหัวโขนทศกัณฐ์แบบ 360 องศา ซูมดูหน้าเล็กบนมงกุฎ และวางทศกัณฐ์ในห้องของคุณด้วย AR">
+<meta property="og:title" content="ทศกัณฐ์ — หัวโขน 3 มิติ และ AR">
+<meta property="og:description" content="หมุนดูหัวโขนทศกัณฐ์แบบ 360 องศา ซูมดูหน้าเล็กบนมงกุฎ และวางทศกัณฐ์ในห้องของคุณด้วย AR">
+<meta property="og:image" content="poster.webp">
+<meta name="theme-color" content="#0c241c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chonburi&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="Khon2.glb" as="fetch" type="model/gltf-binary" crossorigin>
 
-<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js" onerror="this.dataset.failed=1; document.getElementById('mv-fallback').src='https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';"></script>
-<script type="module" id="mv-fallback"></script>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"
+  onerror="var s=document.createElement('script');s.type='module';s.src='https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js';document.head.appendChild(s);"></script>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0c241c; --bg2:#071812; --surface:#123327;
+  --ink:#f1ead8; --dim:#a7b6a8;
+  --gold:#d4af5a; --red:#b8322a; --red2:#952620; --glow:rgba(212,175,90,.14);
+  --line:color-mix(in srgb, var(--gold) 28%, transparent);
+  --display:'Chonburi', 'IBM Plex Sans Thai', serif;
+  --body:'IBM Plex Sans Thai', system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--body); font-size:17px; line-height:1.75;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+a{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold); outline-offset:3px; border-radius:6px}
 
-  :root{
-    --bg:#0b0a0c;
-    --surface:#16131a;
-    --red:#7a1620;
-    --red-bright:#9c1f2c;
-    --gold:#c9a15a;
-    --gold-soft:#e4c98a;
-    --ink:#f2ead8;
-    --ink-dim:#9c9289;
-    --line: rgba(201,161,90,0.22);
-    /* สีเขียวมรกต — สื่อถึงกายสีเขียวของทศกัณฐ์ ใช้เป็นสีรองแซมกับโทนหลัก */
-    --emerald:#3f6b52;
-  }
+/* ---------- top bar ---------- */
+.bar{
+  position:absolute; inset:0 0 auto 0; z-index:20;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:max(14px, env(safe-area-inset-top)) 20px 14px;
+  font-size:14px; color:var(--dim);
+}
+.bar .mark{font-family:var(--display); color:var(--ink); font-size:16px; letter-spacing:.01em}
+.bar a.switch{
+  color:var(--ink); text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+  padding:7px 14px; border:1px solid var(--line); border-radius:999px;
+  background:color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter:blur(6px);
+}
+.bar a.switch:hover{border-color:var(--gold)}
 
-  *{ box-sizing:border-box; }
-  html,body{
-    margin:0; padding:0; height:100%;
-    background:var(--bg);
-    color:var(--ink);
-    font-family:'Noto Sans Thai', 'Inter', sans-serif;
-    -webkit-font-smoothing:antialiased;
-    overflow-x:hidden;
-  }
+/* ---------- hero stage ---------- */
+.stage{
+  position:relative; height:100svh; min-height:560px; max-height:1100px;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 52%, var(--glow), transparent 70%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  overflow:hidden; isolation:isolate;
+}
+.stars{display:none; position:absolute; inset:0; z-index:-1; opacity:.55; pointer-events:none;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 27% 64%, #fff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 41% 9%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 73% 14%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 86% 47%, #fff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 92% 78%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 6% 82%, #fff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 34% 88%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 72%, #fff 50%, transparent 51%);
+  background-size:520px 520px;
+}
+/* the character's name, huge, sitting behind the mask */
+.bigname{
+  position:absolute; left:50%; top:47%; transform:translate(-50%,-50%);
+  margin:0; z-index:0; white-space:nowrap; pointer-events:none; user-select:none;
+  font-family:var(--display); font-weight:400; line-height:1;
+  font-size:clamp(72px, 16.5vw, 330px);
+  color:transparent; -webkit-text-stroke:1.5px color-mix(in srgb, var(--gold) 55%, transparent);
+  opacity:0; animation:name-in 1.4s .15s cubic-bezier(.2,.7,.2,1) forwards;
+}
+@keyframes name-in{from{opacity:0; letter-spacing:.12em} to{opacity:1; letter-spacing:0}}
 
-  body{
-    background:
-      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(122,22,32,0.35), transparent 60%),
-      radial-gradient(ellipse 700px 500px at 100% 100%, rgba(63,107,82,0.14), transparent 60%),
-      var(--bg);
-  }
+model-viewer{
+  position:absolute; inset:0; width:100%; height:100%; z-index:1;
+  background:transparent;
+  --poster-color:transparent;
+  --progress-bar-color:var(--gold);
+  --progress-bar-height:2px;
+}
 
-  header.top{
-    padding:28px 20px 14px;
-    text-align:center;
-    position:relative;
-  }
-  .eyebrow{
-    font-size:11px;
-    letter-spacing:0.28em;
-    text-transform:uppercase;
-    color:var(--gold);
-    font-weight:600;
-    margin-bottom:10px;
-  }
-  h1{
-    font-family:'Noto Serif Thai', serif;
-    font-weight:700;
-    font-size:clamp(30px, 7vw, 46px);
-    margin:0 0 8px;
-    letter-spacing:0.01em;
-  }
-  h1 span{ color:var(--gold-soft); font-weight:500; }
-  .subtitle{
-    color:var(--ink-dim);
-    font-size:14px;
-    max-width:520px;
-    margin:0 auto;
-    line-height:1.7;
-  }
+.caption{
+  position:absolute; z-index:5; left:20px; bottom:calc(22px + env(safe-area-inset-bottom));
+  max-width:min(420px, 60vw); pointer-events:none;
+}
+.caption h1{font-family:var(--display); font-weight:400; font-size:clamp(30px, 5vw, 44px); line-height:1.2; margin:0}
+.caption p{margin:2px 0 0; color:var(--dim); font-size:15px; line-height:1.5}
 
-  .stage-wrap{
-    position:relative;
-    max-width:920px;
-    margin:22px auto 0;
-    padding:0 16px;
-  }
-  .stage{
-    position:relative;
-    border-radius:18px;
-    overflow:hidden;
-    border:1px solid var(--line);
-    background:
-      radial-gradient(circle at 50% 42%, rgba(63,107,82,0.16), transparent 55%),
-      linear-gradient(180deg, var(--surface) 0%, #0e0c10 100%);
-    box-shadow: 0 30px 70px -30px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.02);
-  }
-  .stage::before{
-    content:"";
-    position:absolute; inset:0;
-    pointer-events:none;
-    box-shadow: inset 0 0 120px 20px rgba(0,0,0,0.55);
-    z-index:2;
-  }
-  .ring{
-    position:absolute;
-    left:50%; top:44%;
-    width:64%;
-    aspect-ratio:1/1;
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    border:1px solid rgba(201,161,90,0.25);
-    pointer-events:none;
-    z-index:1;
-  }
-  .ring::after{
-    content:"";
-    position:absolute; inset:-14px;
-    border-radius:50%;
-    border:1px dashed rgba(201,161,90,0.14);
-    animation:spin 40s linear infinite;
-  }
-  @keyframes spin{ to{ transform:rotate(360deg);} }
-  @media (prefers-reduced-motion: reduce){ .ring::after{ animation:none; } }
+.controls{
+  position:absolute; z-index:6; right:20px; bottom:calc(22px + env(safe-area-inset-bottom));
+  display:flex; gap:10px; align-items:center;
+}
+.btn{
+  font-family:var(--body); font-weight:600; font-size:15px; line-height:1;
+  display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+  min-height:48px; padding:0 22px; border-radius:999px; border:0;
+}
+.btn svg{width:20px; height:20px; flex:none}
+.btn-ar{
+  background:var(--red); color:#fff;
+  box-shadow:0 10px 30px -10px color-mix(in srgb, var(--red) 80%, transparent),
+             inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+.btn-ar:hover{background:var(--red2)}
+.btn-icon{
+  width:48px; padding:0; justify-content:center;
+  background:color-mix(in srgb, var(--surface) 80%, transparent); color:var(--ink);
+  border:1px solid var(--line); backdrop-filter:blur(6px);
+}
+.hint{
+  position:absolute; z-index:5; left:50%; transform:translateX(-50%);
+  top:calc(70px + env(safe-area-inset-top)); white-space:nowrap;
+  font-size:13px; color:var(--dim); padding:6px 14px; border-radius:999px;
+  background:color-mix(in srgb, var(--bg) 60%, transparent); border:1px solid var(--line);
+  transition:opacity .5s; pointer-events:none;
+}
+.hint.gone{opacity:0}
 
-  model-viewer{
-    width:100%;
-    height:min(72vh, 620px);
-    min-height:360px;
-    display:block;
-    position:relative;
-    z-index:1;
-    --poster-color: transparent;
-    --progress-bar-color: var(--gold);
-    --progress-bar-height: 3px;
-  }
+/* hotspots on the model: gold diamond, label on hover/focus/active */
+#ar-btn{display:none !important}
+.hotspot{
+  width:28px; height:28px; padding:0; border:0; background:none; cursor:pointer; position:relative;
+  transition:opacity .3s;
+}
+.hotspot::before{
+  content:""; position:absolute; left:50%; top:50%; width:13px; height:13px;
+  transform:translate(-50%,-50%) rotate(45deg); border-radius:2px;
+  border:1.5px solid var(--gold); background:color-mix(in srgb, var(--bg) 50%, transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--bg) 35%, transparent);
+}
+.hotspot.active::before, .hotspot:hover::before{background:var(--gold)}
+.hotspot:not([data-visible]){opacity:0; pointer-events:none}
+.hs-label{
+  position:absolute; left:50%; bottom:100%; transform:translate(-50%, -4px);
+  white-space:nowrap; pointer-events:none;
+  font:500 13px/1.3 var(--body); color:var(--ink);
+  background:color-mix(in srgb, var(--bg) 88%, transparent); border:1px solid var(--line);
+  padding:5px 10px; border-radius:8px; opacity:0; transition:opacity .2s;
+}
+.hotspot.active .hs-label, .hotspot:hover .hs-label, .hotspot:focus-visible .hs-label{opacity:1}
 
-  .hint{
-    position:absolute;
-    left:0; right:0; top:14px;
-    text-align:center;
-    font-size:12px;
-    color:var(--ink-dim);
-    letter-spacing:0.02em;
-    z-index:3;
-    pointer-events:none;
-    display:flex;
-    gap:16px;
-    justify-content:center;
-    flex-wrap:wrap;
-    padding:0 12px;
-  }
-  .hint span{
-    display:inline-flex; align-items:center; gap:6px;
-    background:rgba(11,10,12,0.55);
-    backdrop-filter:blur(3px);
-    padding:5px 10px;
-    border-radius:999px;
-    border:1px solid rgba(201,161,90,0.18);
-  }
+/* QR popover for desktops without AR */
+.qr{
+  position:absolute; z-index:8; right:20px; bottom:calc(84px + env(safe-area-inset-bottom));
+  width:236px; padding:16px; border-radius:16px; text-align:center;
+  background:var(--surface); border:1px solid var(--line); box-shadow:0 20px 50px -20px #000;
+  font-size:14px; line-height:1.5; color:var(--dim);
+}
+.qr[hidden]{display:none}
+.qr #qrcode{background:#fff; padding:10px; border-radius:10px; width:max-content; margin:0 auto 10px}
+.qr strong{color:var(--ink); display:block; margin-bottom:4px}
 
-  /* ปุ่ม AR ต้องเป็นลูกโดยตรงของ <model-viewer> พร้อม slot="ar-button" เท่านั้น */
-  #ar-btn{
-    position:absolute;
-    left:50%; bottom:16px;
-    transform:translateX(-50%);
-    z-index:5;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    background:linear-gradient(180deg, var(--red-bright), var(--red));
-    color:var(--ink);
-    border:1px solid rgba(228,201,138,0.4);
-    padding:14px 26px;
-    min-height:50px;
-    border-radius:999px;
-    font-family:'Noto Sans Thai';
-    font-weight:700;
-    font-size:15px;
-    letter-spacing:0.01em;
-    cursor:pointer;
-    box-shadow:0 12px 28px -8px rgba(122,22,32,0.75);
-    animation:pulse-ar 2.4s ease-in-out 3;
-  }
-  #ar-btn[disabled]{
-    background:#3a3540;
-    color:var(--ink-dim);
-    box-shadow:none;
-    cursor:not-allowed;
-    animation:none;
-    border-color:var(--line);
-  }
-  @keyframes pulse-ar{
-    0%,100%{ box-shadow:0 12px 28px -8px rgba(122,22,32,0.75); }
-    50%{ box-shadow:0 12px 34px -4px rgba(201,161,90,0.55); }
-  }
-  @media (prefers-reduced-motion: reduce){ #ar-btn{ animation:none; } }
-  #ar-btn:focus-visible, .icon-btn:focus-visible{
-    outline:2px solid var(--gold-soft);
-    outline-offset:2px;
-  }
-  #ar-btn svg{ width:20px; height:20px; flex:0 0 auto; }
+.toast{
+  position:absolute; z-index:9; left:50%; top:calc(70px + env(safe-area-inset-top));
+  transform:translate(-50%, -12px); opacity:0; transition:all .3s; pointer-events:none;
+  max-width:88%; text-align:center; font-size:14px; font-weight:500;
+  padding:9px 16px; border-radius:12px; background:var(--surface); border:1px solid var(--gold);
+}
+.toast.show{opacity:1; transform:translate(-50%, 0)}
 
-  .icon-btn{
-    position:absolute;
-    left:16px; bottom:16px;
-    z-index:5;
-    width:46px; height:46px;
-    border-radius:50%;
-    background:rgba(22,19,26,0.75);
-    border:1px solid var(--line);
-    color:var(--gold-soft);
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer;
-    backdrop-filter:blur(4px);
-  }
-  .icon-btn svg{ width:19px; height:19px; }
+.status{position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center;
+  padding:40px; text-align:center; color:var(--dim); font-size:15px; pointer-events:none}
+.status[hidden]{display:none}
 
-  .ar-toast{
-    position:absolute;
-    left:50%; top:16px;
-    transform:translateX(-50%) translateY(-140%);
-    z-index:6;
-    background:rgba(11,10,12,0.9);
-    border:1px solid var(--gold);
-    color:var(--gold-soft);
-    font-size:13px;
-    font-weight:600;
-    padding:9px 18px;
-    border-radius:999px;
-    max-width:88%;
-    text-align:center;
-    transition:transform .3s ease;
-    pointer-events:none;
-  }
-  .ar-toast.show{ transform:translateX(-50%) translateY(0); }
+/* ---------- content ---------- */
+main{max-width:1080px; margin:0 auto; padding:72px 20px 40px}
+h2{font-family:var(--display); font-weight:400; font-size:clamp(26px, 3.4vw, 34px); line-height:1.3; margin:0 0 6px}
+.lede{color:var(--dim); margin:0 0 28px; max-width:56ch}
 
-  .panel{
-    max-width:920px;
-    margin:22px auto 0;
-    padding:0 16px 40px;
-  }
-  .info-title{
-    font-family:'Noto Serif Thai';
-    font-size:23px;
-    font-weight:700;
-    margin:0 0 10px;
-    color:var(--gold-soft);
-  }
-  .info-text{
-    color:#d9d2c4;
-    font-size:15px;
-    line-height:1.9;
-    margin:0 0 16px;
-  }
-  .meta-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
-    gap:14px;
-    margin-top:20px;
-  }
-  .meta-item{
-    border:1px solid var(--line);
-    border-radius:10px;
-    padding:12px 14px;
-    background:rgba(255,255,255,0.02);
-  }
-  .meta-item .k{
-    font-size:10px;
-    text-transform:uppercase;
-    letter-spacing:0.1em;
-    color:var(--gold);
-    margin-bottom:6px;
-  }
-  .meta-item .v{ font-size:14px; color:var(--ink); line-height:1.5; }
+.parts{list-style:none; margin:0 0 88px; padding:0;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0;
+  border-top:1px solid var(--line)}
+.parts li{border-bottom:1px solid var(--line)}
+.part{
+  all:unset; box-sizing:border-box; display:flex; flex-direction:column; justify-content:flex-start;
+  width:100%; height:100%; cursor:pointer;
+  padding:18px 18px 20px 34px; position:relative;
+}
+.part::before{content:""; position:absolute; left:8px; top:27px; width:10px; height:10px;
+  border:1.5px solid var(--gold); transform:rotate(45deg); border-radius:2px}
+.part:hover::before, .part[aria-pressed="true"]::before{background:var(--gold)}
+.part-name{display:block; font-weight:600; font-size:17px; color:var(--ink)}
+.part-body{display:block; color:var(--dim); font-size:15px; line-height:1.6; margin-top:2px}
+.part:focus-visible{outline-offset:-2px}
 
-  footer{
-    text-align:center;
-    padding:20px 16px 34px;
-    color:var(--ink-dim);
-    font-size:11px;
-    letter-spacing:0.03em;
-  }
+.story{display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(0, 1fr); gap:56px; align-items:start}
+.story p{margin:0 0 1.1em; max-width:62ch}
+.story strong{color:var(--gold); font-weight:600}
+dl{margin:6px 0 0; border-top:1px solid var(--line)}
+dl div{display:grid; grid-template-columns:8.5em 1fr; gap:12px; padding:12px 0; border-bottom:1px solid var(--line)}
+dt{color:var(--dim); font-size:15px}
+dd{margin:0; font-size:16px; line-height:1.55}
+
+footer{max-width:1080px; margin:0 auto; padding:40px 20px calc(48px + env(safe-area-inset-bottom));
+  color:var(--dim); font-size:14px; line-height:1.6; display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap;
+  border-top:1px solid var(--line)}
+footer p{margin:0; max-width:60ch}
+
+@media (max-width:760px){
+  body{font-size:16px}
+  .stage{height:88svh; min-height:560px}
+  model-viewer{inset:0 0 150px 0; height:auto}
+  .bigname{top:42%}
+  .caption{left:16px; right:16px; max-width:none; bottom:calc(84px + env(safe-area-inset-bottom))}
+  .controls{left:16px; right:16px; justify-content:space-between}
+  .btn-ar{flex:1; justify-content:center}
+  .qr{right:16px; left:16px; width:auto}
+  main{padding-top:52px}
+  .story{grid-template-columns:1fr; gap:28px}
+  dl div{grid-template-columns:7.5em 1fr}
+  .bar{padding-left:16px; padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .bigname{animation:none; opacity:1}
+  *{transition:none !important}
+}
 </style>
 </head>
 <body>
 
-<header class="top">
-  <div class="eyebrow">โมเดลสามมิติ · ความเป็นจริงเสริม (AR)</div>
-  <h1>ทศกัณฐ์ <span>ราชายักษ์แห่งลงกา</span></h1>
-  <p class="subtitle">ลากนิ้วบนโมเดลเพื่อหมุนดูรอบทิศ 360° บีบสองนิ้วเพื่อซูมเข้า-ออก
-    และแตะปุ่มสีแดงเพื่อนำทศกัณฐ์มาวางไว้ในพื้นที่จริงรอบตัวคุณ</p>
+<header class="bar">
+  <span class="mark">หัวโขน 3 มิติ</span>
+  <a class="switch" href="https://anhnguyen-cpu.github.io/cpu-khon1-ar/">ดูหนุมาน</a>
 </header>
 
-<div class="stage-wrap">
-  <div class="stage">
-    <div class="ring"></div>
+<section class="stage" aria-label="โมเดลสามมิติทศกัณฐ์">
+  <div class="stars" aria-hidden="true"></div>
+  <p class="bigname" aria-hidden="true">ทศกัณฐ์</p>
 
-    <model-viewer
-      id="viewer"
-      src="Khon2.glb"
-      alt="โมเดลสามมิติทศกัณฐ์"
-      camera-controls
-      touch-action="pan-y"
-      auto-rotate
-      auto-rotate-delay="2500"
-      rotation-per-second="14deg"
-      interaction-prompt="none"
-      shadow-intensity="0.9"
-      shadow-softness="0.8"
-      exposure="1.05"
-      environment-image="neutral"
-      camera-orbit="0deg 75deg 105%"
-      min-camera-orbit="auto auto 55%"
-      max-camera-orbit="auto auto 220%"
-      ar
-      ar-modes="scene-viewer webxr quick-look"
-      ar-scale="auto"
-      ar-placement="floor"
-      loading="eager"
-      reveal="auto">
+  <model-viewer id="viewer"
+    src="Khon2.glb" poster="poster.webp"
+    alt="หัวโขนทศกัณฐ์ สามมิติ หมุนดูได้รอบทิศ"
+    camera-controls touch-action="pan-y"
+    camera-orbit="-18deg 80deg auto" min-camera-orbit="auto 20deg auto" max-camera-orbit="auto 160deg auto"
+    field-of-view="28deg" interpolation-decay="120"
+    auto-rotate auto-rotate-delay="3000" rotation-per-second="12deg" interaction-prompt="none"
+    environment-image="neutral" exposure="0.9" shadow-intensity="1" shadow-softness="0.9"
+    ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto" ar-placement="floor"
+    loading="eager" reveal="auto">
+      <button class="hotspot" slot="hotspot-0" data-i="0" data-position="-0.0083m 0.3819m 0.0213m" data-normal="-0.098m 0.247m 0.964m" data-visibility-attribute="visible" aria-label="หน้าซ้อนบนมงกุฎ"><span class="hs-label">หน้าซ้อนบนมงกุฎ</span></button>
+      <button class="hotspot" slot="hotspot-1" data-i="1" data-position="-0.0184m 0.5706m -0.0197m" data-normal="-0.115m 0.416m 0.902m" data-visibility-attribute="visible" aria-label="พักตร์บนยอด"><span class="hs-label">พักตร์บนยอด</span></button>
+      <button class="hotspot" slot="hotspot-2" data-i="2" data-position="-0.0541m 0.1402m 0.1096m" data-normal="-0.241m -0.104m 0.965m" data-visibility-attribute="visible" aria-label="หน้าสีเขียว"><span class="hs-label">หน้าสีเขียว</span></button>
+      <button class="hotspot" slot="hotspot-3" data-i="3" data-position="-0.0564m 0.106m 0.1179m" data-normal="-0.329m -0.474m 0.817m" data-visibility-attribute="visible" aria-label="เขี้ยวโง้ง"><span class="hs-label">เขี้ยวโง้ง</span></button>
+      <button class="hotspot" slot="hotspot-4" data-i="4" data-position="-0.0194m 0.2874m 0.0579m" data-normal="0.245m 0.545m 0.802m" data-visibility-attribute="visible" aria-label="มงกุฎซ้อนชั้น"><span class="hs-label">มงกุฎซ้อนชั้น</span></button>
+      <button id="ar-btn" slot="ar-button" hidden></button>
+  </model-viewer>
 
-      <div class="poster-loading" slot="poster" id="poster-loading" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:#9c9289;font-family:'Noto Sans Thai';font-size:13px;padding:30px;">
-        <span id="poster-text">กำลังโหลดโมเดล…</span>
-      </div>
+  <div class="status" id="status" hidden></div>
+  <div class="hint" id="hint">ลากเพื่อหมุน &nbsp;/&nbsp; บีบหรือเลื่อนเพื่อซูม</div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-      <div class="ar-toast" id="ar-toast"></div>
+  <div class="caption">
+    <h1>ทศกัณฐ์</h1>
+    <p>ราชายักษ์แห่งกรุงลงกา</p>
+  </div>
 
-      <div class="hint">
-        <span>✦ ลากเพื่อหมุน 360°</span>
-        <span>✦ บีบนิ้วเพื่อซูม</span>
-      </div>
+  <div class="qr" id="qr" hidden>
+    <div id="qrcode"></div>
+    <strong>สแกนเพื่อดูแบบ AR</strong>
+    เปิดหน้านี้บนมือถือ Android (Chrome) หรือ iPhone (Safari) แล้วแตะปุ่ม “วางในห้อง”
+  </div>
 
-      <button id="ar-btn" slot="ar-button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 12v10"/></svg>
-        <span id="ar-btn-label">ดูทศกัณฐ์แบบ AR</span>
-      </button>
-    </model-viewer>
-
-    <button class="icon-btn" id="reset-btn" title="รีเซ็ตมุมมอง" aria-label="รีเซ็ตมุมมอง">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.64 6.36"/><path d="M3 21v-5h5"/></svg>
+  <div class="controls">
+    <button class="btn btn-icon" id="reset" aria-label="กลับมุมมองเริ่มต้น" title="กลับมุมมองเริ่มต้น">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+    <button class="btn btn-ar" id="ar-open">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg>
+      <span id="ar-label">วางทศกัณฐ์ในห้อง</span>
     </button>
   </div>
-</div>
+</section>
 
-<div class="panel">
-  <h2 class="info-title">ทศกัณฐ์ คือใคร</h2>
-  <p class="info-text">
-    ทศกัณฐ์เป็นยักษ์ราชาแห่งกรุงลงกา และเป็นตัวปฏิปักษ์คนสำคัญในเรื่อง <strong>รามเกียรติ์</strong>
-    มีลักษณะเด่นคือกายสีเขียว มีสิบหน้าสิบเศียรและยี่สิบกร จึงได้ชื่อว่า "ทศกัณฐ์" (ผู้มีสิบคอ)
-    หรือเรียกอีกชื่อว่า ทศพักตร์ ทศเศียร ท้าวยี่สิบกร ในภาษาสันสกฤตเทียบได้กับราวณะแห่งเรื่องรามายณะ
-  </p>
-  <p class="info-text">
-    ตามตำนาน ทศกัณฐ์แต่เดิมคือยักษ์ผู้รับใช้ชื่อ "นนทก" มีหน้าที่ล้างเท้าเทวดาที่ผ่านไปมา
-    แต่ถูกเหล่าเทวดาลูบหัวเล่นจนเกิดความแค้น จึงขอนิ้วเพชรจากพระอิศวรไปสังหารเทวดาจำนวนมาก
-    พระนารายณ์จึงต้องปราบนนทกด้วยกลอุบาย ก่อนสิ้นใจนนทกได้สาปแช่งขอเกิดใหม่เพื่อล้างแค้น
-    จึงกลับชาติมาเกิดเป็นทศกัณฐ์ โอรสองค์โตของท้าวลัสเตียนกับนางรัชฎา แห่งกรุงลงกา
-  </p>
-  <p class="info-text">
-    ทศกัณฐ์มีฤทธิ์มาก เหาะเหินเดินอากาศได้ และแฝงกายให้อยู่ยงคงกระพันด้วยการถอดดวงใจออก
-    ไปฝากไว้กับพระฤๅษีผู้เป็นอาจารย์ จึงไม่มีผู้ใดสังหารได้ง่าย ด้วยนิสัยเจ้าชู้และหลงใหลในความงาม
-    ทศกัณฐ์ได้ลักพาตัวนางสีดา มเหสีของพระราม มาไว้ที่กรุงลงกา จนกลายเป็นชนวนสงครามครั้งใหญ่
-    ระหว่างทัพพระรามกับกรุงลงกา และสุดท้ายทศกัณฐ์ก็สิ้นพระชนม์ด้วยศรของพระราม
-  </p>
-  <div class="meta-grid">
-    <div class="meta-item"><div class="k">ที่มา</div><div class="v">วรรณคดีเรื่องรามเกียรติ์</div></div>
-    <div class="meta-item"><div class="k">บทบาท</div><div class="v">ราชายักษ์แห่งกรุงลงกา / คู่ปรับของพระราม</div></div>
-    <div class="meta-item"><div class="k">บิดา-มารดา</div><div class="v">ท้าวลัสเตียน และนางรัชฎา</div></div>
-    <div class="meta-item"><div class="k">มเหสี</div><div class="v">นางมณโฑ</div></div>
-    <div class="meta-item"><div class="k">สีกาย</div><div class="v">เขียว</div></div>
-    <div class="meta-item"><div class="k">ลักษณะพิเศษ</div><div class="v">สิบหน้า ยี่สิบกร ถอดดวงใจได้</div></div>
+<main>
+  <h2>ชี้ดูส่วนต่าง ๆ ของหัวโขน</h2>
+  <p class="lede">แตะชื่อส่วนด้านล่าง หรือแตะเครื่องหมายบนโมเดล กล้องจะเลื่อนไปซูมให้ดูใกล้ ๆ</p>
+  <ul class="parts">
+      <li><button class="part" data-i="0" data-position="-0.0083m 0.3819m 0.0213m" data-normal="-0.098m 0.247m 0.964m"><span class="part-name">หน้าซ้อนบนมงกุฎ</span><span class="part-body">หน้าเล็กที่ซ้อนกันเป็นชั้น ๆ แทนเศียรอื่นของทศกัณฐ์ รวมกับหน้าใหญ่เป็นสิบหน้า</span></button></li>
+      <li><button class="part" data-i="1" data-position="-0.0184m 0.5706m -0.0197m" data-normal="-0.115m 0.416m 0.902m"><span class="part-name">พักตร์บนยอด</span><span class="part-body">หน้าเล็กบนสุดของมงกุฎ ส่วนหนึ่งของสิบเศียร</span></button></li>
+      <li><button class="part" data-i="2" data-position="-0.0541m 0.1402m 0.1096m" data-normal="-0.241m -0.104m 0.965m"><span class="part-name">หน้าสีเขียว</span><span class="part-body">สีกายประจำตัวของทศกัณฐ์ เขียนลายด้วยสีทองและขาว</span></button></li>
+      <li><button class="part" data-i="3" data-position="-0.0564m 0.106m 0.1179m" data-normal="-0.329m -0.474m 0.817m"><span class="part-name">เขี้ยวโง้ง</span><span class="part-body">เขี้ยวสีขาวงอนออกจากมุมปาก ลักษณะเด่นของหน้ายักษ์ในการแสดงโขน</span></button></li>
+      <li><button class="part" data-i="4" data-position="-0.0194m 0.2874m 0.0579m" data-normal="0.245m 0.545m 0.802m"><span class="part-name">มงกุฎซ้อนชั้น</span><span class="part-body">มงกุฎทรงสูงลดหลั่นเป็นชั้น ปั้นลายนูนและปิดทอง</span></button></li>
+  </ul>
+
+  <h2>ทศกัณฐ์ คือใคร</h2>
+  <p class="lede">ราชายักษ์แห่งกรุงลงกา</p>
+  <div class="story">
+    <div>
+<p>ทศกัณฐ์เป็นยักษ์ราชาแห่งกรุงลงกา และเป็นตัวปฏิปักษ์คนสำคัญใน<strong>รามเกียรติ์</strong> มีกายสีเขียว สิบหน้าสิบเศียรและยี่สิบกร จึงได้ชื่อว่า “ทศกัณฐ์” แปลว่าผู้มีสิบคอ หรือเรียกอีกชื่อว่า ทศพักตร์ ทศเศียร ท้าวยี่สิบกร เทียบได้กับราวณะในรามายณะ</p>
+<p>ตามตำนาน ทศกัณฐ์แต่เดิมคือยักษ์ชื่อ “นนทก” มีหน้าที่ล้างเท้าเทวดา แต่ถูกเหล่าเทวดาลูบหัวเล่นจนแค้น จึงขอนิ้วเพชรจากพระอิศวรไปสังหารเทวดาจำนวนมาก พระนารายณ์ปราบนนทกด้วยกลอุบาย ก่อนสิ้นใจนนทกขอเกิดใหม่เพื่อล้างแค้น จึงกลับชาติมาเป็นทศกัณฐ์ โอรสของท้าวลัสเตียนกับนางรัชฎา</p>
+<p>ทศกัณฐ์มีฤทธิ์มาก เหาะเหินเดินอากาศได้ และถอดดวงใจไปฝากไว้กับพระฤๅษีผู้เป็นอาจารย์ จึงไม่มีผู้ใดสังหารได้ง่าย ด้วยหลงใหลในความงาม ทศกัณฐ์ลักพาตัวนางสีดา มเหสีของพระราม มาไว้ที่กรุงลงกา จนเป็นชนวนสงครามครั้งใหญ่ และสุดท้ายสิ้นชีพด้วยศรของพระราม</p>
+    </div>
+    <dl>
+<div><dt>ที่มา</dt><dd>วรรณคดีเรื่องรามเกียรติ์</dd></div>
+<div><dt>บทบาท</dt><dd>ราชายักษ์แห่งกรุงลงกา คู่ปรับของพระราม</dd></div>
+<div><dt>บิดา-มารดา</dt><dd>ท้าวลัสเตียน และนางรัชฎา</dd></div>
+<div><dt>มเหสี</dt><dd>นางมณโฑ</dd></div>
+<div><dt>สีกาย</dt><dd>เขียว</dd></div>
+<div><dt>ลักษณะ</dt><dd>สิบหน้า ยี่สิบกร</dd></div>
+    </dl>
   </div>
-</div>
+</main>
 
-<footer>ทศกัณฐ์ · โมเดล 3D เชิงโต้ตอบ และ AR</footer>
+<footer>
+  <p>โมเดลสามมิติสร้างจากการสแกนหัวโขนจริงด้วยภาพถ่าย ปรับแต่งรอยรั่วของพื้นผิวและสีให้สมบูรณ์ ขนาดใน AR ใกล้เคียงของจริง</p>
+  <a href="https://anhnguyen-cpu.github.io/cpu-khon1-ar/">ดูหัวโขนหนุมาน</a>
+</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script>
+(() => {
   const viewer = document.getElementById('viewer');
-  const arBtn = document.getElementById('ar-btn');
-  const arBtnLabel = document.getElementById('ar-btn-label');
-  const arToast = document.getElementById('ar-toast');
+  const arOpen = document.getElementById('ar-open');
+  const arLabel = document.getElementById('ar-label');
+  const toast = document.getElementById('toast');
+  const hint = document.getElementById('hint');
+  const status = document.getElementById('status');
+  const qr = document.getElementById('qr');
+  const START = { orbit: viewer.getAttribute('camera-orbit'), target: 'auto auto auto', fov: '28deg' };
+  const NAME = 'ทศกัณฐ์';
 
-  document.getElementById('reset-btn').addEventListener('click', ()=>{
-    viewer.cameraOrbit = '0deg 75deg 105%';
-    viewer.cameraTarget = 'auto auto auto';
-    viewer.fieldOfView = 'auto';
-  });
-
-  viewer.addEventListener('camera-change', (e)=>{
-    if(e.detail.source === 'user-interaction'){
-      viewer.removeAttribute('auto-rotate');
-    }
-  });
-
-  function showArToast(text, autoHideMs){
-    arToast.textContent = text;
-    arToast.classList.add('show');
-    if(autoHideMs){
-      clearTimeout(showArToast._t);
-      showArToast._t = setTimeout(()=> arToast.classList.remove('show'), autoHideMs);
-    }
+  function say(text, ms) {
+    toast.textContent = text; toast.classList.add('show');
+    clearTimeout(say.t); if (ms) say.t = setTimeout(() => toast.classList.remove('show'), ms);
   }
 
-  viewer.addEventListener('ar-status', (event)=>{
-    switch(event.detail.status){
-      case 'session-started':
-        showArToast('กำลังค้นหาพื้นที่ว่าง — ค่อย ๆ ขยับโทรศัพท์ไปมา');
-        break;
-      case 'object-placed':
-        showArToast('วางทศกัณฐ์เรียบร้อย ✓ ลากนิ้วเพื่อหมุน บีบนิ้วเพื่อย่อ-ขยาย', 4000);
-        break;
-      case 'failed':
-        showArToast('เปิด AR ไม่สำเร็จ ลองใหม่อีกครั้ง หรือตรวจสอบสิทธิ์กล้อง', 4000);
-        break;
-      case 'not-presenting':
-        arToast.classList.remove('show');
-        break;
+  // ---- first interaction: stop spinning, hide hint ----
+  viewer.addEventListener('camera-change', e => {
+    if (e.detail.source === 'user-interaction') {
+      viewer.autoRotate = false; hint.classList.add('gone');
     }
   });
 
-  function refreshArAvailability(){
-    if (viewer.canActivateAR) {
-      arBtn.disabled = false;
-      arBtnLabel.textContent = 'ดูทศกัณฐ์แบบ AR';
-    } else {
-      arBtn.disabled = true;
-      arBtnLabel.textContent = 'อุปกรณ์นี้ไม่รองรับ AR';
-    }
+  // ---- reset view ----
+  document.getElementById('reset').addEventListener('click', () => {
+    if (viewer.resetTurntableRotation) viewer.resetTurntableRotation(0);
+    viewer.cameraTarget = START.target; viewer.cameraOrbit = START.orbit; viewer.fieldOfView = START.fov;
+    setActive(-1);
+  });
+
+  // ---- hotspots + part list share one "focus" action ----
+  const spots = [...document.querySelectorAll('.hotspot')];
+  const parts = [...document.querySelectorAll('.part')];
+  function setActive(i) {
+    spots.forEach(s => s.classList.toggle('active', +s.dataset.i === i));
+    parts.forEach(p => p.setAttribute('aria-pressed', +p.dataset.i === i ? 'true' : 'false'));
   }
-  customElements.whenDefined('model-viewer').then(()=>{
-    viewer.addEventListener('load', refreshArAvailability);
-    setTimeout(refreshArAvailability, 1500);
-    setTimeout(refreshArAvailability, 4000);
-  });
+  function focusPart(el) {
+    const p = el.dataset.position.split(' ').map(parseFloat);
+    const n = el.dataset.normal.split(' ').map(parseFloat);
+    const theta = Math.atan2(n[0], n[2]) * 180 / Math.PI;
+    const phi = Math.min(108, Math.max(50, Math.acos(Math.max(-1, Math.min(1, n[1]))) * 180 / Math.PI));
+    const size = viewer.getDimensions ? viewer.getDimensions() : { x: 1, y: 1, z: 1 };
+    const r = Math.max(size.x, size.y, size.z) * 0.95;
+    viewer.autoRotate = false; hint.classList.add('gone');
+    // auto-rotate spins the model itself; undo that so the angles below are in model space
+    if (viewer.resetTurntableRotation) viewer.resetTurntableRotation(0);
+    viewer.cameraTarget = `${p[0]}m ${p[1]}m ${p[2]}m`;
+    viewer.cameraOrbit = `${theta}deg ${phi}deg ${r}m`;
+    viewer.fieldOfView = '24deg';
+    setActive(+el.dataset.i);
+  }
+  spots.forEach(s => s.addEventListener('click', () => focusPart(s)));
+  parts.forEach(p => p.addEventListener('click', () => {
+    if (document.querySelector('.stage').getBoundingClientRect().top < -80) {
+      window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    focusPart(p);
+  }));
 
-  arBtn.addEventListener('click', ()=>{
-    if (!viewer.canActivateAR) {
-      showArToast('อุปกรณ์หรือเบราว์เซอร์นี้ยังไม่รองรับ AR — ลองเปิดด้วย Chrome (Android) หรือ Safari (iOS) เวอร์ชันล่าสุด', 5000);
+  // ---- AR: real AR on phones, QR code on desktop ----
+  let qrMade = false;
+  function updateAr() {
+    if (viewer.canActivateAR) { arLabel.textContent = `วาง${NAME}ในห้อง`; arOpen.dataset.mode = 'ar'; }
+    else { arLabel.textContent = 'ดูแบบ AR บนมือถือ'; arOpen.dataset.mode = 'qr'; }
+  }
+  arOpen.addEventListener('click', () => {
+    if (arOpen.dataset.mode === 'ar') { viewer.activateAR(); return; }
+    qr.hidden = !qr.hidden;
+    if (!qr.hidden && !qrMade && window.QRCode) {
+      new QRCode(document.getElementById('qrcode'), { text: location.href.split('#')[0], width: 160, height: 160 });
+      qrMade = true;
     }
   });
-
-  const posterText = document.getElementById('poster-text');
-
-  viewer.addEventListener('error', (event)=>{
-    console.error('model-viewer error:', event.detail);
-    posterText.innerHTML =
-      'โหลดโมเดล 3D ไม่สำเร็จ<br>ตรวจสอบว่าไฟล์ <code>Khon2.glb</code> อยู่ในโฟลเดอร์เดียวกับหน้านี้ ' +
-      'บนโฮสต์ และหน้านี้เปิดผ่าน https หรือไม่';
+  document.addEventListener('click', e => {
+    if (!qr.hidden && !qr.contains(e.target) && !arOpen.contains(e.target)) qr.hidden = true;
   });
 
-  setTimeout(()=>{
-    if (typeof customElements.get('model-viewer') === 'undefined') {
-      posterText.innerHTML =
-        'โหลดไลบรารีแสดงผล 3D ไม่สำเร็จ<br>เครือข่ายอาจปิดกั้น ajax.googleapis.com — ' +
-        'ลองเปลี่ยน Wi-Fi หรือปิดตัวบล็อกโฆษณา/VPN แล้วโหลดหน้านี้ใหม่';
-      return;
-    }
-    if (!viewer.loaded) {
-      posterText.innerHTML =
-        'โมเดลกำลังโหลดนานกว่าปกติ<br>ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต หรือลองเปิด ' +
-        '<a href="Khon2.glb" style="color:#e4c98a" target="_blank">ไฟล์ Khon2.glb</a> โดยตรงเพื่อตรวจสอบเส้นทางไฟล์';
+  viewer.addEventListener('ar-status', e => {
+    const s = e.detail.status;
+    if (s === 'session-started') say('ค่อย ๆ ขยับโทรศัพท์ไปมาเพื่อหาพื้นผิว');
+    else if (s === 'object-placed') say(`วาง${NAME}แล้ว ลากเพื่อหมุน บีบเพื่อย่อหรือขยาย`, 4000);
+    else if (s === 'failed') say('เปิด AR ไม่สำเร็จ ตรวจสอบว่าอนุญาตให้ใช้กล้องแล้วลองอีกครั้ง', 5000);
+    else if (s === 'not-presenting') toast.classList.remove('show');
+  });
+
+  customElements.whenDefined('model-viewer').then(() => {
+    updateAr();
+    viewer.addEventListener('load', () => { updateAr(); status.hidden = true; });
+    setTimeout(updateAr, 1500);
+  });
+
+  // ---- loading problems: say what happened and what to do ----
+  viewer.addEventListener('error', () => {
+    status.hidden = false;
+    status.textContent = 'โหลดโมเดลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วโหลดหน้านี้ใหม่';
+  });
+  setTimeout(() => {
+    if (!customElements.get('model-viewer')) {
+      status.hidden = false;
+      status.textContent = 'โหลดตัวแสดงผล 3 มิติไม่ได้ เครือข่ายนี้อาจบล็อก ajax.googleapis.com ลองปิดตัวบล็อกโฆษณาหรือเปลี่ยน Wi-Fi';
     }
   }, 12000);
+})();
 </script>
-
 </body>
 </html>
